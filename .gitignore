@@ -1,0 +1,20 @@
+# Build artifacts
+bin/
+*.o
+*.out
+
+# Python
+python/venv/
+__pycache__/
+*.pyc
+
+# Data (raw + processed logs)
+data/raw/
+data/processed/
+
+# Editor / OS junk
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
