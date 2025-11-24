@@ -18,6 +18,7 @@ FIELDNAMES = [
     "branch_miss_rate"
 ]
 
+#not needed because of user_input.py
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo", default="insertion")
