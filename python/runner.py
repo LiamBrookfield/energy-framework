@@ -1,3 +1,8 @@
+"""
+Parses the command line arguments
+loop over int: size (n) and
+""" 
+
 import subprocess
 from .perf_parser import parse_perf_stat
 from .bench_parser import parse_benchmark_output

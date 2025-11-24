@@ -1,3 +1,15 @@
+"""
+All related I/O for CSVs, don't care about how perf or benchmark work, this module
+just makes files and headers, and then appends rows to said files
+
+Input: A path (str) for the file to append values to
+       A list of fieldnames (column headers)
+       dict that represents ONE row
+
+Output: Writes str to disk, depending on path
+        Returns none or bool (success/failure)
+"""
+
 from pathlib import Path
 import csv
 

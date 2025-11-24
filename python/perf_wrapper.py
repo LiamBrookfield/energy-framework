@@ -1,3 +1,11 @@
+"""
+This is the user facing script, accepts arguments from the command line and calls runner.py
+generating a new row for each repition.
+
+Input: CLI User Input
+Output: Writes rows
+"""
+
 import argparse
 from pathlib import Path
 import csv
