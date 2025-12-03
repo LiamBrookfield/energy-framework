@@ -19,6 +19,7 @@ NUMERIC_CANDIDATES = [
     "branches",
     "branch_misses",
     "cache_misses",
+    "branch_miss_rate"
 ]
 
 
