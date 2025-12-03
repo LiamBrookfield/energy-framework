@@ -1,7 +1,18 @@
 """
-Just a quality of life sc
+Just a quality of life script to remove rows of a give algorithm from perf_runs.csv
+in case I want to do a fresh run.
 
+Usage:
+	Remove all "insertion" runs from the default csv:
+	python3 python/clean_csv.py --algo insertion
 
+	Use a different CSV:
+	python3 python/clean_csv --algo insertion --path data/raw/different_csv
+
+	Use --dry-run argument to not do anything put print how many rows will be removed
+
+THIS EDITS THE CSV IN PLACE - but creates a .bak for safety.
+"""
 
 import argparse
 from pathlib import Path
