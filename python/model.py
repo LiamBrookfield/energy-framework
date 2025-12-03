@@ -49,10 +49,23 @@ def parse_args() -> argparse.Namespace:
         default=0.2,
         help="Fraction of data to reserve for the test set (default: 0.2).",
     )
+   # parser.add_argument(
+   #     "--no-time",
+   #     action="store_true",
+   #     help="Exclude time_ns from the feature set (use counters only).",
+   # )
     parser.add_argument(
-        "--no-time",
-        action="store_true",
-        help="Exclude time_ns from the feature set (use counters only).",
+        "--mode",
+        choices=["time", "counters", "all"],
+        default="all",
+        help=(
+            """
+              Choose features to select:
+              time 	-> time_ns only (baseline predictor)
+              counters -> use only perf counters 
+              all      -> time_ns + counters (default)
+            """
+        ),
     )
     return parser.parse_args()
 
@@ -70,7 +83,36 @@ def main() -> None:
     print(f"Rows after filtering/cleaning: {len(df)}")
 
     # Build features/target
-    X, y, feature_cols = build_features(df, use_time=not args.no_time)
+    if args.mode == "time":
+        print("[INFO] Using time_ns only (baseline model)")
+        X, y, feature_cols = build_features(
+            df,
+            use_time=True,
+            extra_features=[],
+            target_col="energy_j",
+        )
+        # force features to just ["time_ns"] if present
+        feature_cols = [c for c in feature_cols if c == "time_ns"]
+        X = df[feature_cols]
+        y = df["energy_j"]
+
+    elif args.mode == "counters":
+        print("[INFO] Using counters only (no time_ns)")
+        X, y, feature_cols = build_features(
+            df,
+            use_time=False,
+            extra_features=[],
+            target_col="energy_j",
+        )
+
+    else:  # "all"
+        print("[INFO] Using time_ns + counters")
+        X, y, feature_cols = build_features(
+            df,
+            use_time=True,
+            extra_features=[],
+            target_col="energy_j",
+        )
 
     print(f"Using features: {feature_cols}")
     print(f"Total samples: {len(X)}")
@@ -94,7 +136,7 @@ def main() -> None:
     r2_test = r2_score(y_test, y_pred_test)
     rmse_test = root_mean_squared_error(y_test, y_pred_test)
 
-    print("\n=== Model summary ===")
+    print("\n=== Model summary (Linear Regression) ===")
     print(f"Train R^2: {r2_train:.4f}")
     print(f"Test  R^2: {r2_test:.4f}")
     print(f"Test  RMSE (J): {rmse_test:.6f}")
