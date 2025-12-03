@@ -67,7 +67,7 @@ def build_features(
         time_ns (optional), instructions, cycles, branches,
         branch_misses, cache_misses
 
-    extra_features: list of additional column names to include if present.
+    extra_features: list of additional column names to include if I want.
     """
     base_features: List[str] = [
         "instructions",
@@ -101,6 +101,7 @@ def build_features(
     X = X[mask]
     y = y[mask]
 
+    # Just some edge case handlin' for you here.
     if X.empty:
         raise RuntimeError("No rows left after feature/target preparation.")
 
