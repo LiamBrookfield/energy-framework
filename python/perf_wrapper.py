@@ -20,7 +20,6 @@ FIELDNAMES = [
     "branch_miss_rate"
 ]
 
-#not needed because of user_input.py
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo", default="insertion")
@@ -43,13 +42,17 @@ def main():
             for rep in range(args.reps):
                 print(f"[INFO] Running {args.algo} n={n} rep={rep+1}/{args.reps}")
                 row = run_one(args.algo, n, args.sudo)
-                row["run_id"] = run_id
-                timestamp = datetime.now().isoformat()
-                row["timestamp"] = timestamp
+               # row["run_id"] = run_id
+               # timestamp = datetime.now().isoformat()
+               # row["timestamp"] = timestamp
 
                 if row:
                     writer.writerow(row)
                     f.flush()
+                elif row is None:
+                    print("Row is None - runner.py is not working")
+                    return
 
 if __name__ == "__main__":
     main()
+
