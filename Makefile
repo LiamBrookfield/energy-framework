@@ -5,7 +5,10 @@ SRC_DIR=src
 BIN_DIR=bin
 
 # List of source files
-ALGO_SRCS=$(SRC_DIR)/algorithms/insertion.c
+ALGO_SRCS= \
+	$(SRC_DIR)/algorithms/insertion.c \
+	$(SRC_DIR)/algorithms/merge.c \
+	$(SRC_DIR)/algorithms/quick.c
 UTIL_SRCS=$(SRC_DIR)/utils/rapl.c
 MAIN_SRC=$(SRC_DIR)/benchmark.c
 
