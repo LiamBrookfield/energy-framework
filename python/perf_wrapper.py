@@ -42,9 +42,9 @@ def main():
             for rep in range(args.reps):
                 print(f"[INFO] Running {args.algo} n={n} rep={rep+1}/{args.reps}")
                 row = run_one(args.algo, n, args.sudo)
-               # row["run_id"] = run_id
-               # timestamp = datetime.now().isoformat()
-               # row["timestamp"] = timestamp
+                row["run_id"] = run_id
+                timestamp = datetime.now().isoformat()
+                row["timestamp"] = timestamp
 
                 if row:
                     writer.writerow(row)
