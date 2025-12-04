@@ -60,9 +60,9 @@ def parse_args() -> argparse.Namespace:
         default="all",
         help=(
             """
-              Choose features to select:
-              time 	-> time_ns only (baseline predictor)
-              counters -> use only perf counters 
+              Choose features to select:\n
+              time 	-> time_ns only (baseline predictor)\n
+              counters -> use only perf counters\n 
               all      -> time_ns + counters (default)
             """
         ),

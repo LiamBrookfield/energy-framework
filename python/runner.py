@@ -31,10 +31,12 @@ def run_one(algo: str, n: int, use_sudo: bool) -> dict | None:
 
     if result.returncode != 0:
         return None
+        print("Runner is returning none, did you update Makefile?")
 
     bench = parse_benchmark_output(result.stdout)
     if bench is None:
         return None
+        print("Runner is returning none, did you update Makefile?")
 
     algo_out, n_val, time_ns, energy_j = bench
 

@@ -1,5 +1,5 @@
 """
-Takes the output from perf stat and parses, returning the counters we care about
+Takes the output from perf stat and parses, returning the counters I care about
 Input: stderr of perf (str)
 Output: a dict of counters,
 {
