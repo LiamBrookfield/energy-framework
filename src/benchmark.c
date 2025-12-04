@@ -1,10 +1,11 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #include "utils/rapl.h"
 #include "algorithms/insertion.h"
+#include "algorithms/merge.h"
+#include "algorithms/quick.h"
 
 #define BILLION 1000000000L
 
