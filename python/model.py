@@ -29,7 +29,8 @@ from analysis import load_dataset, build_features, split_train_test
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Train a regression model to predict per-run energy (J)."
+        description="Train a regression model to predict per-run energy (J).",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "--csv",
@@ -41,7 +42,7 @@ def parse_args() -> argparse.Namespace:
         "--algo",
         type=str,
         default=None,
-        help="If set, only use rows where algo == this value (e.g. 'insertion').",
+        help="If set, only use rows where algo == this value (example 'insertion').",
     )
     parser.add_argument(
         "--test-size",
@@ -58,14 +59,13 @@ def parse_args() -> argparse.Namespace:
         "--mode",
         choices=["time", "counters", "all"],
         default="all",
-        help=(
+        help=( """
+Choose features to select:
+time     -> time_ns only (baseline predictor)
+counters -> use only perf counters 
+all      -> time_ns + counters (default)
             """
-              Choose features to select:\n
-              time 	-> time_ns only (baseline predictor)\n
-              counters -> use only perf counters\n 
-              all      -> time_ns + counters (default)
-            """
-        ),
+        ), 
     )
     return parser.parse_args()
 
