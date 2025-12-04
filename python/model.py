@@ -137,6 +137,8 @@ def main() -> None:
     rmse_test = root_mean_squared_error(y_test, y_pred_test)
 
     print("\n=== Model summary (Linear Regression) ===")
+    if args.algo is not None:
+        print(f"Algorithm: {args.algo}")
     print(f"Train R^2: {r2_train:.4f}")
     print(f"Test  R^2: {r2_test:.4f}")
     print(f"Test  RMSE (J): {rmse_test:.6f}")
