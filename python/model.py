@@ -80,60 +80,66 @@ def main() -> None:
     args = parse_args()
     ensure_dirs()
 
-    # Just something for later model selection thing to choose between.
+    # choose regression type based on CLI flag
     def make_model(kind: str):
         if kind == "linear":
             return LinearRegression()
         elif kind == "ridge":
-            # Might need to tune this value later
+            # Might tune this value later
             return Ridge(alpha=1.0)
         else:
             raise ValueError(f"Unknown model kind: {kind}")
 
-    # Load
-    df = load_dataset(args.csv, algo_filter=args.algo)
+    # Load data and apply optional algorithm filter
+    df = load_dataset(args.csv, algo_filter=None)
+
+    if args.algo is not None:
+        df = df[df["algo"] == args.algo]
+
     algo_label = args.algo or "all_algos"
 
     print(f"Using data from: {args.csv}")
     print(f"Algorithm filter: {algo_label}")
     print(f"Rows after filtering/cleaning: {len(df)}")
 
-    # Build features/target
+    if df.empty:
+        print("[ERROR] No data after filtering; nothing to train on.")
+        return
+
+    # Build features and target according to --mode
     if args.mode == "time":
         print("[INFO] Using time_ns only (baseline model)")
-        X, y, feature_cols = build_features(
-            df,
-            use_time=True,
-            extra_features=[],
-            target_col="energy_j",
-        )
-        # force features to just ["time_ns"] if present
-        feature_cols = [c for c in feature_cols if c == "time_ns"]
-        X = df[feature_cols]
-        y = df["energy_j"]
+        feature_cols = ["time_ns"]
 
     elif args.mode == "counters":
         print("[INFO] Using counters only (no time_ns)")
-        X, y, feature_cols = build_features(
-            df,
-            use_time=False,
-            extra_features=[],
-            target_col="energy_j",
-        )
+        feature_cols = [
+            "instructions",
+            "cycles",
+            "branches",
+            "branch_misses",
+            "cache_misses",
+        ]
 
     else:  # "all"
         print("[INFO] Using time_ns + counters")
-        X, y, feature_cols = build_features(
-            df,
-            use_time=True,
-            extra_features=[],
-            target_col="energy_j",
-        )
+        feature_cols = [
+            "time_ns",
+            "instructions",
+            "cycles",
+            "branches",
+            "branch_misses",
+            "cache_misses",
+        ]
+
+    # Slice the dataframe into X (features) and y (target)
+    X = df[feature_cols]
+    y = df["energy_j"]
 
     print(f"Using features: {feature_cols}")
     print(f"Total samples: {len(X)}")
 
-    # Split into train/test
+    # Train/test split
     X_train, X_test, y_train, y_test = split_train_test(
         X, y, test_size=args.test_size, random_state=42
     )
@@ -144,7 +150,7 @@ def main() -> None:
     model = make_model(args.model)
     model.fit(X_train, y_train)
 
-    # Quick eval
+    # Evaluate
     y_pred_train = model.predict(X_train)
     y_pred_test = model.predict(X_test)
 
@@ -152,8 +158,7 @@ def main() -> None:
     r2_test = r2_score(y_test, y_pred_test)
     rmse_test = root_mean_squared_error(y_test, y_pred_test)
 
-    print(f"\n=== Model summary ({args.model}) ===")
-    print(f"Algorithm: {args.algo}")
+    print(f"\n=== Model summary (algo={algo_label}, mode={args.mode}, model={args.model}) ===")
     print(f"Train R^2: {r2_train:.4f}")
     print(f"Test  R^2: {r2_test:.4f}")
     print(f"Test  RMSE (J): {rmse_test:.6f}")
@@ -161,9 +166,6 @@ def main() -> None:
     print("\nCoefficients:")
     for name, coef in zip(feature_cols, model.coef_):
         print(f"  {name:15s} -> {coef:.6e}")
-    print(f"Intercept: {model.intercept_:.6e}")
-
-
 
 if __name__ == "__main__":
     main()
