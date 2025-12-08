@@ -1,9 +1,6 @@
-"""
-Train a simple regression model to predict per-run energy (J)
-from OS-level performance counters and timing information.
-
-This script is small on purpose, it parses CLI arguments, calls helper
-functions in analysis.py, and fits a linear regression model.
+#"""
+This script parses CLI arguments, calls helper
+functions in analysis.py, and fits a linear regression model and a ridge regression model.
 
 Usage examples (from project root /energy_framework):
 
@@ -20,7 +17,7 @@ Usage examples (from project root /energy_framework):
 import argparse
 from pathlib import Path
 
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import r2_score, root_mean_squared_error
 
 from paths import RAW_PERF_CSV, MODELS_DIR, ensure_dirs
@@ -65,7 +62,17 @@ time     -> time_ns only (baseline predictor)
 counters -> use only perf counters 
 all      -> time_ns + counters (default)
             """
-        ), 
+        )
+    )
+    parser.add_argument(
+        "--model",
+        choices=["linear", "ridge"],
+        default="linear",
+        help=(
+        "Regression model to use:\n"
+        "  linear -> ordinary least squares (default)\n"
+        "  ridge  -> linear model with L2 regularisation"
+        )
     )
     return parser.parse_args()
 
@@ -74,7 +81,17 @@ def main() -> None:
     args = parse_args()
     ensure_dirs()
 
-    # Load data
+    # Just something for later model selection thing to choose between.
+    def make_model(kind: str):
+        if kind == "linear":
+            return LinearRegression()
+        elif kind == "ridge":
+            # Might need to tune this value later
+            return Ridge(alpha=100.0)
+        else:
+            raise ValueError(f"Unknown model kind: {kind}")
+
+    # Load
     df = load_dataset(args.csv, algo_filter=args.algo)
     algo_label = args.algo or "all_algos"
 
@@ -125,10 +142,11 @@ def main() -> None:
     print(f"Train samples: {len(X_train)}, Test samples: {len(X_test)}")
 
     # Train model
-    model = LinearRegression()
+    model = make_model(args.model)
+    print(f"[DEBUG] Using model: {type(model)}")
     model.fit(X_train, y_train)
 
-    # Quick evaluation (just numbers, no plots for now)
+    # Quick eval
     y_pred_train = model.predict(X_train)
     y_pred_test = model.predict(X_test)
 
@@ -136,7 +154,7 @@ def main() -> None:
     r2_test = r2_score(y_test, y_pred_test)
     rmse_test = root_mean_squared_error(y_test, y_pred_test)
 
-    print("\n=== Model summary (Linear Regression) ===")
+    print(f"\n=== Model summary ({args.model}) ===")
     print(f"Algorithm: {args.algo}")
     print(f"Train R^2: {r2_train:.4f}")
     print(f"Test  R^2: {r2_test:.4f}")
@@ -147,8 +165,6 @@ def main() -> None:
         print(f"  {name:15s} -> {coef:.6e}")
     print(f"Intercept: {model.intercept_:.6e}")
 
-    # (Optional later) could save the model parameters here
-    # to a JSON or pickle under MODELS_DIR
 
 
 if __name__ == "__main__":
