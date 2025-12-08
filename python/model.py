@@ -2,16 +2,7 @@
 This script parses CLI arguments, calls helper
 functions in analysis.py, and fits a linear regression model and a ridge regression model.
 
-Usage examples (from project root /energy_framework):
-
-    All algorithms combined
-    python3 python/model.py
-
-    Only insertion sort
-    python3 python/model.py --algo insertion
-
-    Without time_ns as a feature (counters only)
-    python3 python/model.py --no-time
+Usage example python3 python/model.py --algo quick --model ridge
 """
 
 import argparse
@@ -73,6 +64,15 @@ def parse_args() -> argparse.Namespace:
         "  ridge  -> linear model with L2 regularisation"
         )
     )
+    parser.add_argument(
+    "--test-algo",
+    type=str,
+    default=None,
+    help=(
+        "Optional: if set, train on --algo and evaluate on this other algo.\n"
+        "If not set, use usual random train/test split within --algo (or all algos)."
+    )
+)
     return parser.parse_args()
 
 
@@ -86,7 +86,7 @@ def main() -> None:
             return LinearRegression()
         elif kind == "ridge":
             # Might need to tune this value later
-            return Ridge(alpha=100.0)
+            return Ridge(alpha=1.0)
         else:
             raise ValueError(f"Unknown model kind: {kind}")
 
