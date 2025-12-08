@@ -1,4 +1,4 @@
-#"""
+"""
 This script parses CLI arguments, calls helper
 functions in analysis.py, and fits a linear regression model and a ridge regression model.
 
@@ -56,13 +56,12 @@ def parse_args() -> argparse.Namespace:
         "--mode",
         choices=["time", "counters", "all"],
         default="all",
-        help=( """
-Choose features to select:
-time     -> time_ns only (baseline predictor)
-counters -> use only perf counters 
-all      -> time_ns + counters (default)
-            """
-        )
+        help=(
+        "Choose features to select:\n"
+        "time     -> time_ns only (baseline predictor)\n"
+        "counters -> use only perf counters\n"
+        "all      -> time_ns + counters (default)"
+             )
     )
     parser.add_argument(
         "--model",
@@ -143,7 +142,6 @@ def main() -> None:
 
     # Train model
     model = make_model(args.model)
-    print(f"[DEBUG] Using model: {type(model)}")
     model.fit(X_train, y_train)
 
     # Quick eval
