@@ -9,7 +9,10 @@ import argparse
 from pathlib import Path
 
 from sklearn.linear_model import LinearRegression, Ridge
-from sklearn.metrics import r2_score, root_mean_squared_error
+from sklearn.metrics import r2_score, root_mean_squared_error, mean_absolute_error
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+import numpy as np
 
 from paths import RAW_PERF_CSV, MODELS_DIR, ensure_dirs
 from analysis import load_dataset, build_features, split_train_test
@@ -65,6 +68,11 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument(
+        "--scale",
+        action="store_true",
+        help="Standardise predictors (z-score) using training data only (via Pipeline).",
+    )
+    parser.add_argument(
     "--test-algo",
     type=str,
     default=None,
@@ -72,6 +80,7 @@ def parse_args() -> argparse.Namespace:
         "Optional: if set, train on --algo and evaluate on this other algo.\n"
         "If not set, use usual random train/test split within --algo (or all algos)."
     )
+
 )
     return parser.parse_args()
 
@@ -80,14 +89,21 @@ def main() -> None:
     ensure_dirs()
 
     #choose regression type based on CLI flag
-    def make_model(kind: str):
+    def make_model(kind: str, scale: bool):
         if kind == "linear":
-            return LinearRegression()
+            reg = LinearRegression()
         elif kind == "ridge":
             # Might tune this later
-            return Ridge(alpha=1.0)
+            reg = Ridge(alpha=1.0)
         else:
             raise ValueError(f"Unknown model kind: {kind}")
+
+        if scale:
+            return Pipeline([
+                ("scaler", StandardScaler()),
+                ("reg", reg),
+            ])
+        return reg
 
     # Load full dataset (no filter yet)
     df = load_dataset(args.csv, algo_filter=None)
@@ -183,8 +199,20 @@ def main() -> None:
     print(f"Train samples: {len(X_train)}, Test samples: {len(X_test)}")
 
     # Train model
-    model = make_model(args.model)
+    model = make_model(args.model, args.scale)
+    #debug - is the model actually a pipeline
+    #print("MODEL TYPE:", type(model))
     model.fit(X_train, y_train)
+    #debug - verify scaler is on the train set only
+    #if hasattr(model, "named_steps"):
+        #scaler = model.named_steps["scaler"]
+        #print("Scaler mean_:", scaler.mean_)
+        #print("Scaler scale_:", scaler.scale_)
+    #debug - check transformed data has mean = 0  and std = 1
+    #if hasattr(model, "named_steps"):
+        #Z = model.named_steps["scaler"].transform(X_train)
+        #print("Train scaled means:", Z.mean(axis=0))
+        #print("Train scaled stds :", Z.std(axis=0))
 
     # Evaluate
     y_pred_train = model.predict(X_train)
@@ -194,18 +222,40 @@ def main() -> None:
     r2_test = r2_score(y_test, y_pred_test)
     rmse_test = root_mean_squared_error(y_test, y_pred_test)
 
+    mae_test = mean_absolute_error(y_test, y_pred_test)
+
+    # Always predict the mean training energy
+    baseline_pred = np.full(shape=len(y_test), fill_value=float(np.mean(y_train)))
+    baseline_rmse = root_mean_squared_error(y_test, baseline_pred)
+    baseline_mae = mean_absolute_error(y_test, baseline_pred)
+
     if cross_algo:
         header = f"train={train_algo}, test={test_algo}"
     else:
         header = args.algo or "all_algos"
 
-    print(f"\n=== Model summary (algos={header}, mode={args.mode}, model={args.model}) ===")
+    scale_label = "on" if args.scale else "off"
+    print(f"\n=== Model summary (algos={header}, mode={args.mode}, model={args.model}, scale={scale_label}) ===")
     print(f"Train R^2: {r2_train:.4f}")
     print(f"Test  R^2: {r2_test:.4f}")
     print(f"Test  RMSE (J): {rmse_test:.6f}")
+    print(f"Test  MAE  (J): {mae_test:.6f}")
 
-    print("\nCoefficients:")
-    for name, coef in zip(feature_cols, model.coef_):
+    print(f"\nBaseline (mean predictor):")
+    print(f"Baseline RMSE (J): {baseline_rmse:.6f}")
+    print(f"Baseline MAE  (J): {baseline_mae:.6f}")
+
+    # Extract coefficients (handle pipeline vs direct estimator)
+    if hasattr(model, "named_steps"):
+        reg = model.named_steps["reg"]
+        coefs = reg.coef_
+        coef_note = "(standardised predictors: 1 SD change)"
+    else:
+        coefs = model.coef_
+        coef_note = "(raw predictors: 1 unit change)"
+
+    print(f"\nCoefficients {coef_note}:")
+    for name, coef in zip(feature_cols, coefs):
         print(f"  {name:15s} -> {coef:.6e}")
 
 if __name__ == "__main__":
