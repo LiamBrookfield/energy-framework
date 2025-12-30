@@ -7,7 +7,7 @@ import subprocess
 from perf_parser import parse_perf_stat
 from bench_parser import parse_benchmark_output
 
-PERF_PATH = "/usr/lib/linux-tools/6.8.0-88-generic/perf"
+PERF_PATH = "/usr/lib/linux-tools/6.8.0-90-generic/perf"
 BENCHMARK_PATH = "./bin/benchmark"
 PERF_EVENTS = ["instructions", "cycles", "branches", "branch-misses", "cache-misses"]
 

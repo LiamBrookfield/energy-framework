@@ -42,16 +42,18 @@ def main():
             for rep in range(args.reps):
                 print(f"[INFO] Running {args.algo} n={n} rep={rep+1}/{args.reps}")
                 row = run_one(args.algo, n, args.sudo)
+                if row is None:
+                    print("Row is None - runner.py is not working")
+                    return
                 row["run_id"] = run_id
-                timestamp = datetime.now().isoformat()
-                row["timestamp"] = timestamp
+                row["timestamp"] = datetime.now().isoformat()
 
                 if row:
                     writer.writerow(row)
                     f.flush()
-                elif row is None:
-                    print("Row is None - runner.py is not working")
-                    return
+                #elif row is None:
+                    #print("Row is None - runner.py is not working")
+                    #return
 
 if __name__ == "__main__":
     main()

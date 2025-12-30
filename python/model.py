@@ -229,6 +229,15 @@ def main() -> None:
     baseline_rmse = root_mean_squared_error(y_test, baseline_pred)
     baseline_mae = mean_absolute_error(y_test, baseline_pred)
 
+    # Does this model beat the baseline? (Answeing yes or no to RQ stuff)
+    rmse_beats = rmse_test < baseline_rmse
+    mae_beats = mae_test < baseline_mae
+
+    print("\nFeasibility check vs baseline:")
+    print(f"Beats baseline RMSE? {'YES' if rmse_beats else 'NO'}")
+    print(f"Beats baseline MAE?  {'YES' if mae_beats else 'NO'}")
+    print(f"Overall feasible?    {'YES' if (rmse_beats and mae_beats) else 'NO'}")
+
     if cross_algo:
         header = f"train={train_algo}, test={test_algo}"
     else:
