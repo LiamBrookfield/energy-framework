@@ -2,6 +2,8 @@
 This script parses CLI arguments, calls helper
 functions in analysis.py, and fits a linear regression model and a ridge regression model.
 
+This script has swolen to the full data prep + analysis script (oops)
+
 Usage example python3 python/model.py --algo quick --model ridge
 """
 
@@ -73,20 +75,47 @@ def parse_args() -> argparse.Namespace:
         help="Standardise predictors (z-score) using training data only (via Pipeline).",
     )
     parser.add_argument(
-    "--test-algo",
-    type=str,
-    default=None,
-    help=(
-        "Optional: if set, train on --algo and evaluate on this other algo.\n"
-        "If not set, use usual random train/test split within --algo (or all algos)."
+        "--test-algo",
+        type=str,
+        default=None,
+        help=(
+            "Optional: if set, train on --algo and evaluate on this other algo.\n"
+            "If not set, use usual random train/test split within --algo (or all algos)."
+        )
     )
-
-)
+    parser.add_argument(
+        "--min-time-s",
+        type=float,
+        default=None,
+        help="Optional: keep only runs with runtime >= this many seconds.",
+    )
+    parser.add_argument(
+        "--max-time-s",
+        type=float,
+        default=None,
+        help="Optional: keep only runs with runtime <= this many seconds.",
+    )
     return parser.parse_args()
 
 def main() -> None:
     args = parse_args()
     ensure_dirs()
+
+    # lil conversion for below function
+    NS_PER_S = 1_000_000_000
+
+    # helper function for limiting df by time bands
+    def filter_time_band(df, min_s, max_s, label=""):
+        before = len(df)
+        if min_s is not None:
+            df = df[df["time_ns"] >= int(min_s * NS_PER_S)]
+        if max_s is not None:
+            df = df[df["time_ns"] <= int(max_s * NS_PER_S)]
+        removed = before - len(df)
+        if min_s is not None or max_s is not None:
+            print(f"[INFO] Time-band{(' ' + label) if label else ''}: "
+                  f"kept {len(df)}/{before} (removed {removed})")
+        return df
 
     #choose regression type based on CLI flag
     def make_model(kind: str, scale: bool):
@@ -111,6 +140,14 @@ def main() -> None:
         print("[ERROR] No data found at CSV path; nothing to do.")
         return
 
+    # Exclude runs where RAPL energy quantised to 0 (below measurement resolution)
+    before = len(df)
+    df = df[df["energy_j"] > 0.0]
+    removed = before - len(df)
+    if removed > 0:
+        print(f"[INFO] Filtered energy_j>0: removed {removed} rows ({removed/before:.2%})\n")
+
+
     # Decide training/testing split mode
     cross_algo = args.test_algo is not None
 
@@ -133,6 +170,13 @@ def main() -> None:
             print(f"[ERROR] No rows found for test algo='{test_algo}'")
             return
 
+        train_df = filter_time_band(train_df, args.min_time_s, args.max_time_s, label=f"(train={train_algo})")
+        test_df  = filter_time_band(test_df,  args.min_time_s, args.max_time_s, label=f"(test={test_algo})")
+
+        if train_df.empty or test_df.empty:
+            print("[ERROR] No data left after time-band filtering for train or test.")
+            return
+
         print(f"Using data from: {args.csv}")
         print(f"Train algorithm: {train_algo}")
         print(f"Test  algorithm: {test_algo}")
@@ -143,6 +187,11 @@ def main() -> None:
         if args.algo is not None:
             df = df[df["algo"] == args.algo]
         algo_label = args.algo or "all_algos"
+
+        df = filter_time_band(df, args.min_time_s, args.max_time_s, label=f"(algo={algo_label})")
+        if df.empty:
+            print("[ERROR] No data left after time-band filtering.")
+            return
 
         print(f"Using data from: {args.csv}")
         print(f"Algorithm filter (train+test): {algo_label}")
@@ -183,7 +232,6 @@ def main() -> None:
         # Train on one algorithm, test on another
         X_train = train_df[feature_cols]
         y_train = train_df["energy_j"]
-
         X_test = test_df[feature_cols]
         y_test = test_df["energy_j"]
     else:
@@ -198,21 +246,22 @@ def main() -> None:
     print(f"Using features: {feature_cols}")
     print(f"Train samples: {len(X_train)}, Test samples: {len(X_test)}")
 
+    # Diagnostics: target spread (R^2 can be misleading if y_test variance is tiny)
+    y_test_mean = float(np.mean(y_test))
+    y_test_std = float(np.std(y_test))
+    y_train_mean = float(np.mean(y_train))
+    print(f"[INFO] y_train mean={y_train_mean:.6f} J")
+    print(f"[INFO] y_test  mean={y_test_mean:.6f} J, std={y_test_std:.6f} J")
+
+    # Oracle baseline for context: predicting mean(y_test) gives R^2 = 0 by definition
+    oracle_pred = np.full(len(y_test), y_test_mean)
+    oracle_rmse = root_mean_squared_error(y_test, oracle_pred)
+    oracle_mae = mean_absolute_error(y_test, oracle_pred)
+    print(f"[INFO] Oracle baseline (mean of y_test): RMSE={oracle_rmse:.6f} J, MAE={oracle_mae:.6f} J")
+
     # Train model
     model = make_model(args.model, args.scale)
-    #debug - is the model actually a pipeline
-    #print("MODEL TYPE:", type(model))
     model.fit(X_train, y_train)
-    #debug - verify scaler is on the train set only
-    #if hasattr(model, "named_steps"):
-        #scaler = model.named_steps["scaler"]
-        #print("Scaler mean_:", scaler.mean_)
-        #print("Scaler scale_:", scaler.scale_)
-    #debug - check transformed data has mean = 0  and std = 1
-    #if hasattr(model, "named_steps"):
-        #Z = model.named_steps["scaler"].transform(X_train)
-        #print("Train scaled means:", Z.mean(axis=0))
-        #print("Train scaled stds :", Z.std(axis=0))
 
     # Evaluate
     y_pred_train = model.predict(X_train)
