@@ -1,13 +1,13 @@
 """
-visualise.py (replacement, hardcoded diagnostics)
+visualise.py - would be more efficient to pull from model.py but everythings
+getting tangled atp so we model again here for plotting
 
 generates
 - Predicted vs Actual (within-algo and cross-algo)
 - Residuals vs Runtime
 
-Hardcoded scenarios (edit below if desired):
-- Within-algo: insertion (train=test)
-- Cross-algo: quick -> merge
+Hardcoded scenarios because im getting sick of everything
+having 20 parse args (edit below if needed)
 
 Model:
 - Ridge regression (alpha=1.0)

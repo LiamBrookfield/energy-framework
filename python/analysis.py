@@ -101,7 +101,7 @@ def build_features(
     X = X[mask]
     y = y[mask]
 
-    # Just some edge case handlin' for you here.
+    # Just some edge case handlin' for the boys.
     if X.empty:
         raise RuntimeError("No rows left after feature/target preparation.")
 

@@ -1,3 +1,54 @@
+FOR THE GENERATION OF THE DATSET
+
 python3 python/perf_wrapper.py --algo insertion --reps 25 --sizes 8000 16000 32000 64000 80000 100000 128000 150000 256000 --sudo
 python3 python/perf_wrapper.py --algo merge --reps 25 --sizes 8000 16000 32000 64000 128000 256000 512000 1000000 2000000 4000000 8000000 10000000 16000000 20000000 25000000 32000000 --sudo
 python3 python/perf_wrapper.py --algo quick --reps 25 --sizes 8000 16000 32000 64000 128000 256000 512000 1000000 2000000 4000000 8000000 16000000 20000000 25000000 28000000 32000000 --sudo
+
+ALL THE COMMAND LINES FOR MODEL.PY (Generation of full results)
+
+WITHIN ALGORITHM
+# insertion (train=test=insertion)
+python model.py --algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+# merge (train=test=merge)
+python model.py --algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+# quick (train=test=quick)
+python model.py --algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+CROSS ALGORITHM
+# insertion -> merge
+python model.py --algo insertion --test-algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo insertion --test-algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo insertion --test-algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+# insertion -> quick
+python model.py --algo insertion --test-algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo insertion --test-algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo insertion --test-algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+# merge -> insertion
+python model.py --algo merge --test-algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo merge --test-algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo merge --test-algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+# merge -> quick
+python model.py --algo merge --test-algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo merge --test-algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo merge --test-algo quick --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+# quick -> insertion
+python model.py --algo quick --test-algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo quick --test-algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo quick --test-algo insertion --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
+
+# quick -> merge
+python model.py --algo quick --test-algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode time
+python model.py --algo quick --test-algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode counters
+python model.py --algo quick --test-algo merge --min-time-s 0.5 --max-time-s 5 --model ridge --scale --mode all
