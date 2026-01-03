@@ -33,7 +33,7 @@ from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_sco
 
 # Hardcoded scenarios
 WITHIN_ALGO = "insertion"
-CROSS_TRAIN_ALGO = "quick"
+CROSS_TRAIN_ALGO = "insertion"
 CROSS_TEST_ALGO = "merge"
 
 # Feature sets
@@ -121,6 +121,35 @@ def fit_predict(train_df: pd.DataFrame, test_df: pd.DataFrame, feature_cols: lis
         "mae": mean_absolute_error(y_test, y_pred),
     }
     return y_test.values, y_pred, test_df["time_ns"].values, metrics
+
+def save_pred_vs_actual_overlay(y_true, preds: dict, title: str, outpath: Path):
+    """
+    preds: dict of {label: y_pred_array}
+    """
+    plt.figure()
+
+    # plot each prediction series
+    markers = ["o", "x", "^", "s"]  # enough for 2–4 series
+    for i, (label, y_pred) in enumerate(preds.items()):
+        plt.scatter(y_true, y_pred, s=12, marker=markers[i % len(markers)], label=label)
+
+    # identity line + locked bounds
+    lo = float(min([np.min(y_true)] + [np.min(v) for v in preds.values()]))
+    hi = float(max([np.max(y_true)] + [np.max(v) for v in preds.values()]))
+    plt.plot([lo, hi], [lo, hi], linewidth=1)
+
+    plt.xlim(lo, hi)
+    plt.ylim(lo, hi)
+    plt.gca().set_aspect("equal", adjustable="box")
+
+    plt.xlabel("Actual energy (J)")
+    plt.ylabel("Predicted energy (J)")
+    plt.title(title)
+    plt.legend()
+
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(outpath, dpi=200, bbox_inches="tight")
+    plt.close()
 
 
 def save_pred_vs_actual(y_true: np.ndarray, y_pred: np.ndarray, title: str, outpath: Path):
@@ -229,19 +258,38 @@ def main() -> None:
         min_time_s=args.min_time_s, max_time_s=args.max_time_s
     )
 
-    # Cross-algo diagnostics (quick -> merge)
-    run_scenario(
-        df=df, outdir=args.outdir, name="cross",
-        train_algo=CROSS_TRAIN_ALGO, test_algo=CROSS_TEST_ALGO,
-        feature_cols=FEATURES_TIME,
-        min_time_s=args.min_time_s, max_time_s=args.max_time_s
-    )
-    run_scenario(
-        df=df, outdir=args.outdir, name="cross",
-        train_algo=CROSS_TRAIN_ALGO, test_algo=CROSS_TEST_ALGO,
-        feature_cols=FEATURES_ALL,
-        min_time_s=args.min_time_s, max_time_s=args.max_time_s
-    )
+    # Cross-algo overlay diagnostic (quick -> merge)
+    train_df = df[df["algo"] == CROSS_TRAIN_ALGO].copy()
+    test_df = df[df["algo"] == CROSS_TEST_ALGO].copy()
+
+    if train_df.empty or test_df.empty:
+        print("[WARN] Cross-algo overlay: missing train or test rows; skipping.")
+    else:
+        train_df = filter_time_band(
+            train_df, args.min_time_s, args.max_time_s,
+            label=f"(cross train={CROSS_TRAIN_ALGO})"
+        )
+        test_df = filter_time_band(
+            test_df, args.min_time_s, args.max_time_s,
+            label=f"(cross test={CROSS_TEST_ALGO})"
+        )
+
+        if train_df.empty or test_df.empty:
+            print("[WARN] Cross-algo overlay: no rows left after time band; skipping.")
+        else:
+            y_true, y_pred_time, _, m_time = fit_predict(train_df, test_df, FEATURES_TIME)
+            _,      y_pred_all,  _, m_all  = fit_predict(train_df, test_df, FEATURES_ALL)
+
+            print(f"\n=== cross_overlay_{CROSS_TRAIN_ALGO}_to_{CROSS_TEST_ALGO} ===")
+            print(f"[INFO] time-only    : R^2={m_time['r2']:.4f}, RMSE={m_time['rmse']:.6f} J, MAE={m_time['mae']:.6f} J")
+            print(f"[INFO] time+counters: R^2={m_all['r2']:.4f}, RMSE={m_all['rmse']:.6f} J, MAE={m_all['mae']:.6f} J")
+
+            save_pred_vs_actual_overlay(
+                y_true=y_true,
+                preds={"time-only": y_pred_time, "time+counters": y_pred_all},
+                title=f"Predicted vs Actual (cross {CROSS_TRAIN_ALGO}→{CROSS_TEST_ALGO})",
+                outpath=args.outdir / f"pred_actual_overlay_cross_{CROSS_TRAIN_ALGO}_to_{CROSS_TEST_ALGO}.png",
+            )
 
     print(f"\n[INFO] Wrote figures to: {args.outdir.resolve()}")
     print("[INFO] Done.")

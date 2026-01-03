@@ -246,6 +246,20 @@ def main() -> None:
     print(f"Using features: {feature_cols}")
     print(f"Train samples: {len(X_train)}, Test samples: {len(X_test)}")
 
+    # debug stuff to help find whats causing the r^2 blowup for insertion -> merge
+    def debug_feature_ranges(label, Xdf):
+        print(f"\n[DEBUG] {label} raw feature summary:")
+        for col in feature_cols:
+            s = Xdf[col]
+            print(
+                f"  {col:14s} min={s.min():.6g}  p1={s.quantile(0.01):.6g}  "
+                f"median={s.median():.6g}  p99={s.quantile(0.99):.6g}  max={s.max():.6g}  "
+                f"mean={s.mean():.6g}  std={s.std(ddof=0):.6g}"
+            )
+
+    debug_feature_ranges("TRAIN", X_train)
+    debug_feature_ranges("TEST ", X_test)
+
     # Diagnostics: target spread (R^2 can be misleading if y_test variance is tiny)
     y_test_mean = float(np.mean(y_test))
     y_test_std = float(np.std(y_test))
@@ -263,9 +277,68 @@ def main() -> None:
     model = make_model(args.model, args.scale)
     model.fit(X_train, y_train)
 
+    # more debug stuff for crazy cases
+    if hasattr(model, "named_steps") and "scaler" in model.named_steps:
+        scaler = model.named_steps["scaler"]
+
+        print("\n[DEBUG] scaler params (fit on TRAIN):")
+        for name, mu, sd in zip(feature_cols, scaler.mean_, scaler.scale_):
+            print(f"  {name:14s} train_mean={mu:.6g}  train_std={sd:.6g}")
+
+        X_train_z = scaler.transform(X_train)
+        X_test_z = scaler.transform(X_test)
+
+
+        print("\n[DEBUG] z-score ranges (after scaling with TRAIN stats):")
+        for j, name in enumerate(feature_cols):
+            tr = X_train_z[:, j]
+            te = X_test_z[:, j]
+            tr_p1, tr_p99 = np.percentile(tr, [1, 99])
+            te_p1, te_p99 = np.percentile(te, [1, 99])
+            print(
+                f"  {name:14s} "
+                f"TRAIN z[min={tr.min(): .3f}, p1={tr_p1: .3f}, p99={tr_p99: .3f}, max={tr.max(): .3f}]"
+                f" | TEST z[min={te.min(): .3f}, p1={te_p1: .3f}, p99={te_p99: .3f}, max={te.max(): .3f}]"
+            )
+
     # Evaluate
     y_pred_train = model.predict(X_train)
     y_pred_test = model.predict(X_test)
+
+    # More horrific debug code
+    print("\n[DEBUG] y_test vs y_pred_test summary:")
+    ypt = np.asarray(y_pred_test, dtype=float)
+    yt = np.asarray(y_test, dtype=float)
+    p1t, p99t = np.percentile(yt, [1, 99])
+    p1p, p99p = np.percentile(ypt, [1, 99])
+    print(
+        f"  y_test: min={yt.min():.6g} p1={p1t:.6g} p99={p99t:.6g} max={yt.max():.6g} "
+        f"mean={yt.mean():.6g} std={yt.std():.6g}"
+    )
+    print(
+        f"  y_pred: min={ypt.min():.6g} p1={p1p:.6g} p99={p99p:.6g} max={ypt.max():.6g} "
+        f"mean={ypt.mean():.6g} std={ypt.std():.6g}"
+    )
+
+    abs_err = np.abs(ypt - yt)
+    worst_idx = np.argsort(-abs_err)[:5]
+
+    print("\n[DEBUG] Top-5 absolute errors (index within TEST split):")
+    for i in worst_idx:
+        i = int(i)
+        row = X_test.iloc[i]
+        print(
+            f"  i={i:4d}  y_true={yt[i]:.6g}  y_pred={ypt[i]:.6g}  abs_err={abs_err[i]:.6g}"
+        )
+
+        feats = " ".join([f"{c}={row[c]:.6g}" for c in feature_cols])
+        print(f"       raw: {feats}")
+
+        if hasattr(model, "named_steps") and "scaler" in model.named_steps:
+            scaler = model.named_steps["scaler"]
+            z = scaler.transform(X_test.iloc[[i]])[0]
+            zfeats = " ".join([f"{c}_z={z[j]: .3f}" for j, c in enumerate(feature_cols)])
+            print(f"         z: {zfeats}")
 
     r2_train = r2_score(y_train, y_pred_train)
     r2_test = r2_score(y_test, y_pred_test)
